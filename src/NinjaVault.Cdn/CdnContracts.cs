@@ -60,7 +60,11 @@ namespace NinjaVault.Cdn
         string ContentType,
         long SizeBytes,
         CdnBucketVisibility Visibility,
-        string Url);
+        string Url)
+    {
+        /// <summary>Browser-friendly inline view URL returned by the server, when it provides one.</summary>
+        public string? ViewUrl { get; init; }
+    }
 
     /// <summary>
     /// Full file detail as returned by list/metadata endpoints. Do not expect this shape from
@@ -82,7 +86,11 @@ namespace NinjaVault.Cdn
         CdnThumbnailStatus ThumbnailStatus,
         string? ThumbnailUrl,
         DateTimeOffset CreatedAtUtc,
-        string Url);
+        string Url)
+    {
+        /// <summary>Browser-friendly inline view URL returned by the server, when it provides one.</summary>
+        public string? ViewUrl { get; init; }
+    }
 
     public sealed record CdnPagedResult<T>(
         IReadOnlyList<T> Items,

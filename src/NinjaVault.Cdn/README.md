@@ -257,7 +257,7 @@ catch (CdnApiException ex)
 
 ---
 
-## Logging, correlation and retries: your choice
+## Logging, correlation and retries
 
 `NinjaVault.Cdn` adds no logging of its own. `AddNinjaVaultCdn(...)` returns the `IHttpClientBuilder` for the
 named client **`NinjaVaultCdn`** (`DependencyInjection.ServiceName`), so you attach exactly what your app uses.
@@ -315,6 +315,18 @@ var service = new BrandingService(cdn);
 | Target frameworks | `net8.0`, `net9.0`, `net10.0` |
 | Dependencies | `Microsoft.Extensions.Http`, `Options.ConfigurationExtensions` 8.0+ (nothing else) |
 | Source Link / symbols | ✅ Step into the package source while debugging |
+
+## NinjaVault SDKs
+
+The same CDN client in every language, with the same features and the **same version number** (for example `100.42.1` everywhere):
+
+| Language | Package | Install | Source |
+|---|---|---|---|
+| .NET 8+ | [`NinjaVault.Cdn`](https://www.nuget.org/packages/NinjaVault.Cdn) | `dotnet add package NinjaVault.Cdn` | [NinjaVault](https://github.com/alisaivi786/NinjaVault) |
+| Python 3.10+ | [`ninjavault-cdn`](https://pypi.org/project/ninjavault-cdn/) | `pip install ninjavault-cdn` | [NinjaVault-Python](https://github.com/alisaivi786/NinjaVault-Python) |
+| Node.js 18+ | [`@ninjavault/cdn`](https://www.npmjs.com/package/@ninjavault/cdn) | `npm install @ninjavault/cdn` | [NinjaVault-Node](https://github.com/alisaivi786/NinjaVault-Node) |
+
+---
 
 ## Links
 
