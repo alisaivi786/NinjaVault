@@ -23,8 +23,8 @@
 - **One interface, every operation.** Upload, list/search, metadata, usage summary, download, soft delete, public URLs, and single or batch presigned URLs.
 - **No HTTP plumbing.** Handles the `X-Api-Key` header, multipart fields, object-key encoding, and the JSON success/error envelope for you.
 - **Typed errors.** Every failure is a `CdnApiException` with the HTTP status, CDN error code, trace id, validation details, and `Retry-After`.
-- **Observable by default.** Every call is logged through [NinjaVault.Http](https://www.nuget.org/packages/NinjaVault.Http), with the API key redacted, file bytes never logged, and an `X-Correlation-Id` header added.
-- **Plays well with your stack.** Built on `IHttpClientFactory`, so you can chain Polly or `Microsoft.Extensions.Http.Resilience`, and the interface is easy to mock in tests.
+- **Standalone, no opinions.** Depends only on `Microsoft.Extensions.*`. Logging, retries and correlation stay under your app's control: plug in whatever you already use.
+- **Plays well with your stack.** Built on `IHttpClientFactory`, so you can chain logging handlers, Polly or `Microsoft.Extensions.Http.Resilience`, and the interface is easy to mock in tests.
 - **Streams large files.** Downloads are handed to you as a stream and never buffered in memory.
 
 ---
@@ -89,13 +89,6 @@ That's it. Everything below is optional.
       "BaseUrl": "https://cdn.example.com",
       "PublicBaseUrl": "https://cdn.example.com",
       "ApiKey": ""
-    },
-    "ExternalApiLogging": {
-      "Enabled": true,
-      "CaptureRequestBody": true,
-      "CaptureResponseBody": true,
-      "MaxBodyLength": 8192,
-      "SensitiveHeaders": []
     }
   }
 }
@@ -106,7 +99,6 @@ That's it. Everything below is optional.
 | `NinjaVault:Cdn:BaseUrl` | ✅ | none | Base URL of the authenticated `/api/v1/...` routes. A path prefix works (`https://gateway.example.com/cdn`). |
 | `NinjaVault:Cdn:ApiKey` | ✅ | none | The `X-Api-Key` issued for your integration. **Backend-only secret.** |
 | `NinjaVault:Cdn:PublicBaseUrl` | | `BaseUrl` | Host for anonymous public files. **Host only**; the client appends `/public/`. |
-| `NinjaVault:ExternalApiLogging:*` | | see [NinjaVault.Http](https://www.nuget.org/packages/NinjaVault.Http) | Request/response logging for every CDN call. |
 
 Environment variables use `__` in place of `:` (for example `NinjaVault__Cdn__BaseUrl`).
 
@@ -265,21 +257,29 @@ catch (CdnApiException ex)
 
 ---
 
-## Logging and correlation
+## Logging, correlation and retries: your choice
 
-`AddNinjaVaultCdn` also registers [NinjaVault.Http](https://www.nuget.org/packages/NinjaVault.Http). With no extra code, every CDN call:
+`NinjaVault.Cdn` adds no logging of its own. `AddNinjaVaultCdn(...)` returns the `IHttpClientBuilder` for the
+named client **`NinjaVaultCdn`** (`DependencyInjection.ServiceName`), so you attach exactly what your app uses.
 
-- writes one structured log line (service `NinjaVaultCdn`, URL, status, elapsed ms, correlation id) through `ILogger`, so it goes to Serilog, the console, Application Insights, or whatever logging you already have;
-- carries an `X-Correlation-Id` header;
-- redacts `X-Api-Key`, and records uploads and downloads as a small `{ "omitted": true, ... }` placeholder instead of bytes.
-
-To keep full call records (headers and bodies) in your own store, register a sink:
+| You want... | Add |
+|---|---|
+| Nothing extra | Nothing. `IHttpClientFactory` already writes request start/end entries to `ILogger` under the category `System.Net.Http.HttpClient.NinjaVaultCdn.*`, so they reach Serilog, Seq or the console. |
+| Ready-made request/response logging, a DB sink and `X-Correlation-Id` | [NinjaVault.Http](https://www.nuget.org/packages/NinjaVault.Http) (optional package): `.AddNinjaVaultHttpLogging(DependencyInjection.ServiceName)` |
+| Microsoft's structured HTTP logging | `Microsoft.Extensions.Http.Diagnostics`: `.AddExtendedHttpClientLogging()` |
+| Your own logging or correlation | Your own `DelegatingHandler`: `.AddHttpMessageHandler<MyHandler>()` |
+| Retries, timeouts, circuit breaker | `Microsoft.Extensions.Http.Resilience`: `.AddStandardResilienceHandler()` |
 
 ```csharp
-builder.Services.AddScoped<IExternalApiCallLogSink, MyDbApiLogSink>();
+// dotnet add package NinjaVault.Http
+builder.Services.AddNinjaVaultHttp(builder.Configuration);            // optional: binds NinjaVault:ExternalApiLogging
+builder.Services.AddNinjaVaultCdn(builder.Configuration)
+    .AddNinjaVaultHttpLogging(DependencyInjection.ServiceName)        // logging + correlation id
+    .AddStandardResilienceHandler();                                  // retries
 ```
 
-See the [NinjaVault.Http README](https://www.nuget.org/packages/NinjaVault.Http) for the sink, correlation middleware, and every logging option.
+> If you write your own handler, remember that every CDN request carries the `X-Api-Key` header. Redact it
+> before logging headers. NinjaVault.Http does this for you.
 
 ---
 
@@ -313,7 +313,7 @@ var service = new BrandingService(cdn);
 | | |
 |---|---|
 | Target frameworks | `net8.0`, `net9.0`, `net10.0` |
-| Dependencies | `NinjaVault.Http`, `Microsoft.Extensions.Http` 8.0+ |
+| Dependencies | `Microsoft.Extensions.Http`, `Options.ConfigurationExtensions` 8.0+ (nothing else) |
 | Source Link / symbols | ✅ Step into the package source while debugging |
 
 ## Links

@@ -63,7 +63,7 @@ pack: test changesets
 push:
 	@if [ -z "$$NUGET_API_KEY" ]; then echo "Set NUGET_API_KEY first (nuget.org > API Keys, scoped to NinjaVault.*)."; exit 1; fi
 	@if [ ! -d "$(PACKAGES_DIR)" ]; then echo "Nothing to push - run make pack first."; exit 1; fi
-	@# Http first: NinjaVault.Cdn depends on it. --skip-duplicate makes re-running safe.
+	@# --skip-duplicate makes re-running safe.
 	@for id in NinjaVault.Http NinjaVault.Cdn; do \
 	    if [ -n "$(PACKAGE)" ] && [ "$(PACKAGE)" != "$$id" ]; then continue; fi; \
 	    for pkg in $(PACKAGES_DIR)/$$id.[0-9]*.nupkg; do \

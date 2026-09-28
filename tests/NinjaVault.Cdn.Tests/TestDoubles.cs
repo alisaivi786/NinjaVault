@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
 using Microsoft.Extensions.Http;
-using NinjaVault.Http.Logging;
 
 namespace NinjaVault.Cdn.Tests;
 
@@ -35,16 +34,16 @@ internal static class StubResponses
         => Json(HttpStatusCode.OK, body);
 }
 
-internal sealed class RecordingExternalApiLogSink : IExternalApiCallLogSink
+internal sealed class RecordingHandler : DelegatingHandler
 {
-    private readonly ConcurrentQueue<ExternalApiCallLog> _logs = new();
+    private readonly ConcurrentQueue<string> _requests = new();
 
-    public IReadOnlyList<ExternalApiCallLog> Logs => _logs.ToArray();
+    public IReadOnlyList<string> Requests => _requests.ToArray();
 
-    public Task WriteAsync(ExternalApiCallLog log, CancellationToken cancellationToken)
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        _logs.Enqueue(log);
-        return Task.CompletedTask;
+        _requests.Enqueue($"{request.Method} {request.RequestUri}");
+        return base.SendAsync(request, cancellationToken);
     }
 }
 

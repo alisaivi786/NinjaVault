@@ -4,8 +4,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
-using NinjaVault.Http.Correlation;
-using NinjaVault.Http.Logging;
 
 namespace NinjaVault.Cdn.Tests;
 
@@ -306,42 +304,42 @@ public sealed class NinjaVaultCdnClientTests
     }
 
     [Fact]
-    public async Task AddNinjaVaultCdn_UsesNinjaVaultHttpLoggingAndCorrelationPipeline()
+    public async Task AddNinjaVaultCdn_RunsConsumerHandlersOnEveryCall()
     {
-        Dictionary<string, string?> values = new()
-        {
-            ["NinjaVault:Cdn:BaseUrl"] = "https://cdn.test",
-            ["NinjaVault:Cdn:ApiKey"] = "cdn_secret",
-            ["NinjaVault:ExternalApiLogging:Enabled"] = "true"
-        };
-        IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(values)
-            .Build();
         ServiceCollection services = new();
         StubCdnPrimaryHandler primaryHandler = new();
-        RecordingExternalApiLogSink logSink = new();
+        RecordingHandler consumerHandler = new();
 
         services.AddSingleton(primaryHandler);
         services.AddSingleton<IHttpMessageHandlerBuilderFilter, StubPrimaryHandlerFilter>();
-        services.AddNinjaVaultCdn(configuration);
-        services.AddSingleton<IExternalApiCallLogSink>(logSink);
+        services.AddNinjaVaultCdn(options =>
+        {
+            options.BaseUrl = "https://cdn.test";
+            options.ApiKey = "cdn_secret";
+        }).AddHttpMessageHandler(() => consumerHandler);
 
         using ServiceProvider provider = services.BuildServiceProvider();
-        provider.GetRequiredService<ICorrelationContextAccessor>().Current = new CorrelationContext("corr-cdn", "trace-1");
         INinjaVaultCdnClient client = provider.GetRequiredService<INinjaVaultCdnClient>();
 
         _ = await client.ListBucketsAsync(TestContext.Current.CancellationToken);
 
-        HttpRequestMessage request = Assert.Single(primaryHandler.Requests);
-        Assert.Equal("corr-cdn", Assert.Single(request.Headers.GetValues("X-Correlation-Id")));
+        string seen = Assert.Single(consumerHandler.Requests);
+        Assert.Equal("GET https://cdn.test/api/v1/buckets", seen);
+        Assert.Single(primaryHandler.Requests);
+    }
 
-        ExternalApiCallLog log = Assert.Single(logSink.Logs);
-        Assert.Equal("NinjaVaultCdn", log.ServiceName);
-        Assert.Equal("corr-cdn", log.CorrelationId);
-        Assert.Equal("trace-1", log.TraceId);
-        Assert.Equal("GET", log.Method);
-        Assert.Equal("https://cdn.test/api/v1/buckets", log.RequestUrl);
-        Assert.Equal(200, log.StatusCode);
+    [Fact]
+    public void AddNinjaVaultCdn_DoesNotRegisterLoggingInfrastructure()
+    {
+        ServiceCollection services = new();
+
+        services.AddNinjaVaultCdn(options =>
+        {
+            options.BaseUrl = "https://cdn.test";
+            options.ApiKey = "cdn_secret";
+        });
+
+        Assert.DoesNotContain(services, d => d.ServiceType.Namespace?.StartsWith("NinjaVault.Http", StringComparison.Ordinal) == true);
     }
 
     [Fact]
