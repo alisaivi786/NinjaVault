@@ -133,3 +133,33 @@ internal static class StubResponses
         return response;
     }
 }
+
+/// <summary>Response content that throws if it is read before a log entry has been written.</summary>
+internal sealed class ReadAfterLogContent : HttpContent
+{
+    private readonly byte[] _body;
+    private readonly LogStore _store;
+
+    public ReadAfterLogContent(byte[] body, string contentType, LogStore store)
+    {
+        _body = body;
+        _store = store;
+        Headers.ContentType = new MediaTypeHeaderValue(contentType);
+    }
+
+    protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+    {
+        if (_store.Logs.Count == 0)
+        {
+            throw new InvalidOperationException("Response body was read by the logging handler before the log was written.");
+        }
+
+        return stream.WriteAsync(_body, 0, _body.Length);
+    }
+
+    protected override bool TryComputeLength(out long length)
+    {
+        length = _body.Length;
+        return true;
+    }
+}

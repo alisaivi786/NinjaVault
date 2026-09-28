@@ -211,4 +211,43 @@ public sealed class ExternalApiLoggingHandlerTests
         Assert.Equal(400, log.StatusCode);
         Assert.Equal("{\"error\":\"bad\"}", log.ResponseBody);
     }
+
+    [Fact]
+    public async Task BinaryResponseBody_IsNotBufferedByTheLoggingHandler()
+    {
+        // The content refuses to be read until the log has been written, so any buffering inside the
+        // handler (which happens before the sink runs) would fail the call.
+        byte[] fileBytes = [0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x37];
+        LogStore store = new();
+        StubHttpMessageHandler stub = new(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ReadAfterLogContent(fileBytes, "application/pdf", store)
+        });
+        using HttpTestHostContext host = HttpTestHost.Build(stub, store);
+
+        byte[] result = await host.Client.PostMultipartFileAsync("download", fileBytes, "doc.pdf", TestContext.Current.CancellationToken);
+
+        Assert.Equal(fileBytes, result);
+        ExternalApiCallLog log = Assert.Single(store.Logs);
+        using JsonDocument responseBody = JsonDocument.Parse(log.ResponseBody!);
+        Assert.True(responseBody.RootElement.GetProperty("omitted").GetBoolean());
+        Assert.Equal("application/pdf", responseBody.RootElement.GetProperty("contentType").GetString());
+    }
+
+    [Fact]
+    public async Task LargeTextResponse_IsNotBufferedAndIsRecordedAsPlaceholder()
+    {
+        string largeJson = "\"" + new string('a', (1024 * 1024) + 16) + "\"";
+        StubHttpMessageHandler stub = new(_ => StubResponses.Ok(largeJson));
+        LogStore store = new();
+        using HttpTestHostContext host = HttpTestHost.Build(stub, store);
+
+        string result = await host.Client.PostAsync("big", "{}", TestContext.Current.CancellationToken);
+
+        Assert.Equal(largeJson, result);
+        ExternalApiCallLog log = Assert.Single(store.Logs);
+        using JsonDocument responseBody = JsonDocument.Parse(log.ResponseBody!);
+        Assert.True(responseBody.RootElement.GetProperty("omitted").GetBoolean());
+        Assert.Contains("larger than 1 MB", responseBody.RootElement.GetProperty("reason").GetString(), StringComparison.Ordinal);
+    }
 }
