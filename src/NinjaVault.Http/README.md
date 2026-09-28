@@ -28,7 +28,8 @@
 - **Never breaks your call.** A failing sink is caught and logged as a warning; the real HTTP call always completes.
 - **Standard building blocks.** A plain `DelegatingHandler` on `IHttpClientFactory`, so it composes with resilience handlers and anything else.
 
-> Using the NinjaVault CDN? Install [NinjaVault.Cdn](https://www.nuget.org/packages/NinjaVault.Cdn). It registers this package for you.
+> Works with any typed or named `HttpClient`, including [NinjaVault.Cdn](https://www.nuget.org/packages/NinjaVault.Cdn):
+> `services.AddNinjaVaultCdn(configuration).AddNinjaVaultHttpLogging("NinjaVaultCdn");`
 
 ---
 
@@ -62,6 +63,20 @@ public sealed class PaymentsApi(HttpClient http) : IPaymentsApi
 ```
 
 Every call made by `PaymentsApi` is now logged and carries an `X-Correlation-Id` header.
+
+### Add logging to a client registered elsewhere
+
+Already have an `IHttpClientBuilder` (from `AddHttpClient`, an SDK, or `AddNinjaVaultCdn`)? Attach logging with one line:
+
+```csharp
+builder.Services.AddNinjaVaultHttp(builder.Configuration);   // binds options (optional; defaults otherwise)
+
+builder.Services.AddHttpClient<IWeatherApi, WeatherApi>()
+    .AddNinjaVaultHttpLogging("WeatherApi");
+
+builder.Services.AddNinjaVaultCdn(builder.Configuration)
+    .AddNinjaVaultHttpLogging("NinjaVaultCdn");
+```
 
 ---
 
@@ -205,7 +220,7 @@ using HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "char
 
 | Symptom | Fix |
 |---|---|
-| No log entries at all | `Enabled` is `false`, the client was registered with `AddHttpClient` instead of `AddNinjaVaultHttpClient`, or a log filter drops `NinjaVault.Http` at `Information`. |
+| No log entries at all | `Enabled` is `false`, the client has no `AddNinjaVaultHttpLogging(...)` / `AddNinjaVaultHttpClient` registration, or a log filter drops `NinjaVault.Http` at `Information`. |
 | Only one line per call, no bodies | That's the default `ILogger` sink. Register an `IExternalApiCallLogSink` to keep the full record. |
 | My sink isn't used | Register it **after** `AddNinjaVaultHttp` (the default is added with `TryAdd`). |
 | `"omitted": true` in the body | Binary, multipart or >1 MB body, by design. |

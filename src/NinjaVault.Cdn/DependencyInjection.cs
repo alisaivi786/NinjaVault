@@ -2,13 +2,16 @@ namespace NinjaVault.Cdn
 {
     public static class DependencyInjection
     {
-        /// <summary>Logical service name recorded on every NinjaVault.Http log entry for CDN calls.</summary>
+        /// <summary>
+        /// Name of the <see cref="IHttpClientFactory"/> client used by <see cref="INinjaVaultCdnClient"/>.
+        /// Use it as the service name when you attach your own logging handler.
+        /// </summary>
         public const string ServiceName = "NinjaVaultCdn";
 
         /// <summary>
-        /// Registers <see cref="INinjaVaultCdnClient"/> bound to the <see cref="NinjaVaultCdnOptions.SectionName"/>
-        /// section, plus NinjaVault.Http logging/correlation. Returns the <see cref="IHttpClientBuilder"/> so callers
-        /// can chain their own handlers (e.g. resilience) onto the CDN pipeline.
+        /// Registers <see cref="INinjaVaultCdnClient"/> bound to the <see cref="NinjaVaultCdnOptions.SectionName"/> section.
+        /// Logging, retries and correlation are left to the application: chain your own handlers onto the returned
+        /// <see cref="IHttpClientBuilder"/> (for example <c>.AddHttpMessageHandler(...)</c> or <c>.AddStandardResilienceHandler()</c>).
         /// </summary>
         public static IHttpClientBuilder AddNinjaVaultCdn(this IServiceCollection services, IConfiguration configuration)
         {
@@ -16,7 +19,6 @@ namespace NinjaVault.Cdn
             ArgumentNullException.ThrowIfNull(configuration);
 
             services.Configure<NinjaVaultCdnOptions>(configuration.GetSection(NinjaVaultCdnOptions.SectionName));
-            services.AddNinjaVaultHttp(configuration);
 
             return AddClient(services);
         }
@@ -28,14 +30,12 @@ namespace NinjaVault.Cdn
             ArgumentNullException.ThrowIfNull(configure);
 
             services.Configure(configure);
-            services.AddNinjaVaultHttp();
 
             return AddClient(services);
         }
 
-        // Register CDN through NinjaVault.Http so every CDN request is logged and correlation-aware.
         // The client builds absolute request URIs from NinjaVaultCdnOptions.BaseUrl, so no BaseAddress is set here.
         private static IHttpClientBuilder AddClient(IServiceCollection services)
-            => services.AddNinjaVaultHttpClient<INinjaVaultCdnClient, NinjaVaultCdnClient>(ServiceName);
+            => services.AddHttpClient<INinjaVaultCdnClient, NinjaVaultCdnClient>(ServiceName);
     }
 }

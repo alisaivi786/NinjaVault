@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Prints "<PackageId> <Version>" for every package under src/ whose current <Version> is not on nuget.org yet.
-# Order is dependency-safe: packages with no NinjaVault project reference come first
-# (NinjaVault.Http before NinjaVault.Cdn).
+# Order is dependency-safe: packages with no NinjaVault project reference come first.
+# (Kept for future packages that reference each other.)
 set -euo pipefail
 
 cd "$(dirname "$0")/.."

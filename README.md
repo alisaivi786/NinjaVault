@@ -7,7 +7,7 @@ Public .NET packages for integrating with the **NinjaVault CDN Server**.
 | Package | NuGet | What it does |
 |---|---|---|
 | [`NinjaVault.Cdn`](src/NinjaVault.Cdn/README.md) | [![NuGet](https://img.shields.io/nuget/v/NinjaVault.Cdn.svg)](https://www.nuget.org/packages/NinjaVault.Cdn) | Typed CDN client: upload, list, metadata, download, delete, public and presigned URLs. |
-| [`NinjaVault.Http`](src/NinjaVault.Http/README.md) | [![NuGet](https://img.shields.io/nuget/v/NinjaVault.Http.svg)](https://www.nuget.org/packages/NinjaVault.Http) | Typed `HttpClient` registration with request/response logging and `X-Correlation-Id` propagation. Used by `NinjaVault.Cdn`. |
+| [`NinjaVault.Http`](src/NinjaVault.Http/README.md) | [![NuGet](https://img.shields.io/nuget/v/NinjaVault.Http.svg)](https://www.nuget.org/packages/NinjaVault.Http) | **Optional.** Request/response logging, log sinks and `X-Correlation-Id` for any `HttpClient`, including the CDN client. |
 
 Both target `net8.0`, `net9.0` and `net10.0`.
 
@@ -43,8 +43,8 @@ See the [NinjaVault.Cdn README](src/NinjaVault.Cdn/README.md) for every operatio
 ## Repository layout
 
 ```
-src/NinjaVault.Http/        HTTP logging + correlation package
-src/NinjaVault.Cdn/         CDN client package (depends on NinjaVault.Http)
+src/NinjaVault.Http/        Optional HTTP logging + correlation package
+src/NinjaVault.Cdn/         CDN client package (standalone)
 tests/                      xUnit v3 tests for each package
 changesets/<PackageId>/     One <Version>.md per released version (release notes)
 scripts/                    Change-set helpers used by the Makefile
@@ -64,12 +64,12 @@ Without `make`: `dotnet build NinjaVault.slnx` and `dotnet test NinjaVault.slnx`
 
 ## Releasing a new version
 
-1. Bump `<Version>` in `src/<PackageId>/<PackageId>.csproj`. If you bump `NinjaVault.Http`, release it before `NinjaVault.Cdn`.
+1. Bump `<Version>` in `src/<PackageId>/<PackageId>.csproj`.
 2. `make changeset PACKAGE=<PackageId> TYPE=Patch` and fill in the generated `changesets/<PackageId>/<Version>.md`.
 3. `make pack` locally to check that it builds, tests pass and the change-set exists.
 4. Open a pull request. The **CI** workflow builds, tests, checks formatting and change-sets, and packs.
 5. Merge to `main`. The **Publish** workflow finds every package whose `<Version>` is not on nuget.org yet,
-   pushes it with NuGet Trusted Publishing (no stored API key; `NinjaVault.Http` before `NinjaVault.Cdn`),
+   pushes it with NuGet Trusted Publishing (no stored API key),
    and creates a `<PackageId>/v<Version>` tag and GitHub release from the change-set.
 
 nuget.org does not allow a version to be re-uploaded. Always bump `<Version>` for a new release.
@@ -83,7 +83,7 @@ nuget.org does not allow a version to be re-uploaded. Always bump `<Version>` fo
 | GitHub > Settings > Secrets > Actions | `NUGET_USER` = your nuget.org **username** (profile name, not email) |
 
 Manual fallback: `make pack`, then upload `artifacts/packages/*.nupkg` at
-<https://www.nuget.org/packages/manage/upload> (`NinjaVault.Http` first), or `NUGET_API_KEY=... make push`.
+<https://www.nuget.org/packages/manage/upload>, or `NUGET_API_KEY=... make push`.
 
 ## License
 

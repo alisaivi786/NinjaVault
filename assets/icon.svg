@@ -1,66 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#1E1B4B"/>
-      <stop offset="1" stop-color="#0B1022"/>
-    </linearGradient>
-    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#22D3EE"/>
-      <stop offset="1" stop-color="#8B5CF6"/>
-    </linearGradient>
-    <radialGradient id="steel" cx="0.38" cy="0.32" r="0.8">
-      <stop offset="0" stop-color="#F1F5F9"/>
-      <stop offset="0.55" stop-color="#94A3B8"/>
-      <stop offset="1" stop-color="#475569"/>
-    </radialGradient>
-    <linearGradient id="band" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#1E293B"/>
-      <stop offset="1" stop-color="#020617"/>
-    </linearGradient>
-    <linearGradient id="red" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#F43F5E"/>
-      <stop offset="1" stop-color="#DC2626"/>
-    </linearGradient>
-    <clipPath id="head"><circle cx="248" cy="268" r="150"/></clipPath>
-  </defs>
-
-  <!-- tile -->
-  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bg)"/>
-
-  <!-- vault door outer ring + bolts -->
-  <circle cx="248" cy="268" r="178" fill="none" stroke="url(#ring)" stroke-width="22"/>
-  <g fill="#CBD5E1">
-    <circle cx="248" cy="90"  r="10"/><circle cx="248" cy="446" r="10"/>
-    <circle cx="70"  cy="268" r="10"/><circle cx="426" cy="268" r="10"/>
-    <circle cx="122" cy="142" r="10"/><circle cx="374" cy="394" r="10"/>
-    <circle cx="122" cy="394" r="10"/><circle cx="374" cy="142" r="10"/>
-  </g>
-
-  <!-- head = steel vault door -->
-  <circle cx="248" cy="268" r="150" fill="url(#steel)"/>
-  <g clip-path="url(#head)">
-    <!-- dial ticks on the lower half -->
-    <g stroke="#334155" stroke-width="6" stroke-linecap="round" opacity="0.55">
-      <line x1="248" y1="400" x2="248" y2="378"/>
-      <line x1="188" y1="386" x2="198" y2="366"/>
-      <line x1="308" y1="386" x2="298" y2="366"/>
-      <line x1="140" y1="352" x2="158" y2="338"/>
-      <line x1="356" y1="352" x2="338" y2="338"/>
-    </g>
-    <!-- ninja mask band -->
-    <rect x="80" y="200" width="340" height="104" fill="url(#band)"/>
-    <!-- red headband above the mask -->
-    <rect x="80" y="168" width="340" height="30" fill="url(#red)"/>
-  </g>
-
-  <!-- eyes -->
-  <path d="M144 240 L230 258 Q204 284 168 274 Q148 266 144 240 Z" fill="#F8FAFC"/>
-  <path d="M352 240 L266 258 Q292 284 328 274 Q348 266 352 240 Z" fill="#F8FAFC"/>
-  <circle cx="200" cy="264" r="10" fill="#22D3EE"/>
-  <circle cx="296" cy="264" r="10" fill="#22D3EE"/>
-
-  <!-- headband knot + flowing tails -->
-  <circle cx="392" cy="183" r="18" fill="url(#red)"/>
-  <path d="M404 176 C440 150 462 128 480 92 C474 132 452 162 414 190 Z" fill="url(#red)"/>
-  <path d="M406 192 C446 196 470 186 492 160 C482 200 452 214 410 206 Z" fill="#E11D48"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"><defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1E1B4B"/><stop offset="1" stop-color="#0B1022"/></linearGradient>
+  <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22D3EE"/><stop offset="1" stop-color="#8B5CF6"/></linearGradient>
+  <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F1F5F9"/><stop offset="0.5" stop-color="#CBD5E1"/><stop offset="1" stop-color="#64748B"/></linearGradient>
+  <linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1E293B"/><stop offset="1" stop-color="#020617"/></linearGradient>
+  <linearGradient id="red" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#F43F5E"/><stop offset="1" stop-color="#DC2626"/></linearGradient>
+  <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#22D3EE" stop-opacity="0.9"/><stop offset="1" stop-color="#22D3EE" stop-opacity="0"/></radialGradient>
+<linearGradient id="disk" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#334155"/><stop offset="0.5" stop-color="#1E293B"/><stop offset="1" stop-color="#0F172A"/></linearGradient>
+</defs><rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bg)"/><path d="M98 318 V380 A138 34 0 0 0 374 380 V318 Z" fill="url(#disk)" stroke="url(#accent)" stroke-width="6"/><ellipse cx="236" cy="318" rx="138" ry="34" fill="#1E293B" stroke="url(#accent)" stroke-width="6"/><path d="M98 236 V298 A138 34 0 0 0 374 298 V236 Z" fill="url(#disk)" stroke="url(#accent)" stroke-width="6"/><ellipse cx="236" cy="236" rx="138" ry="34" fill="#1E293B" stroke="url(#accent)" stroke-width="6"/><path d="M98 150 V214 A138 34 0 0 0 374 214 V150 Z" fill="url(#disk)" stroke="url(#accent)" stroke-width="6"/><path d="M101 170 A138 34 0 0 0 371 170 V206 A138 34 0 0 1 101 206 Z" fill="#020617"/><path d="M101 160 A138 34 0 0 0 371 160 V172 A138 34 0 0 1 101 172 Z" fill="url(#red)"/><ellipse cx="236" cy="150" rx="138" ry="34" fill="#1E293B" stroke="url(#accent)" stroke-width="6"/><path d="M368 176 C404 164 424 142 438 110 C440 150 416 178 376 194 Z" fill="url(#red)"/><path d="M178 185.836 L222 196 Q206.6 209.86 189.0 202.468 Q178 197.848 178 185.836 Z" fill="#F8FAFC"/><path d="M294 185.836 L250 196 Q265.4 209.86 283.0 202.468 Q294 197.848 294 185.836 Z" fill="#F8FAFC"/><circle cx="205.28" cy="198.2176" r="6" fill="#22D3EE"/><circle cx="266.72" cy="198.2176" r="6" fill="#22D3EE"/><circle cx="138" cy="284" r="7" fill="#22D3EE"/><rect x="156" y="280" width="60" height="8" rx="4" fill="#334155"/><circle cx="138" cy="366" r="7" fill="#22D3EE"/><rect x="156" y="362" width="60" height="8" rx="4" fill="#334155"/><circle cx="380" cy="380" r="84" fill="#0B1022"/><path d="M352 378 V352 A28 28 0 0 1 408 352 V378" fill="none" stroke="url(#steel)" stroke-width="15" stroke-linecap="round"/><rect x="330" y="368" width="100" height="80" rx="18" fill="url(#accent)"/><circle cx="380" cy="400" r="10" fill="#0B1022"/><rect x="375" y="402" width="10" height="22" rx="4" fill="#0B1022"/></svg>

@@ -64,13 +64,29 @@ public static class NinjaVaultHttpServiceCollectionExtensions
             ? services.AddHttpClient<TClient, TImplementation>()
             : services.AddHttpClient<TClient, TImplementation>(configureClient);
 
-        builder.AddHttpMessageHandler(provider => new ExternalApiLoggingHandler(
+        return builder.AddNinjaVaultHttpLogging(serviceName);
+    }
+
+    /// <summary>
+    /// Adds request/response logging and correlation-id propagation to an <see cref="HttpClient"/> that was
+    /// registered elsewhere - for example <c>services.AddNinjaVaultCdn(configuration).AddNinjaVaultHttpLogging("NinjaVaultCdn")</c>.
+    /// Registers the shared infrastructure with default options if <see cref="AddNinjaVaultHttp(IServiceCollection, IConfiguration)"/>
+    /// has not been called; call that first to bind options from configuration.
+    /// </summary>
+    /// <param name="builder">The client builder to add logging to.</param>
+    /// <param name="serviceName">Logical name recorded on each log entry (e.g. "PaymentsApi").</param>
+    public static IHttpClientBuilder AddNinjaVaultHttpLogging(this IHttpClientBuilder builder, string serviceName)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentException.ThrowIfNullOrWhiteSpace(serviceName);
+
+        builder.Services.AddNinjaVaultHttp();
+
+        return builder.AddHttpMessageHandler(provider => new ExternalApiLoggingHandler(
             serviceName,
             provider.GetRequiredService<IServiceScopeFactory>(),
             provider.GetRequiredService<ICorrelationContextAccessor>(),
             provider.GetRequiredService<IOptionsMonitor<ExternalApiLoggingOptions>>(),
             provider.GetRequiredService<ILogger<ExternalApiLoggingHandler>>()));
-
-        return builder;
     }
 }
