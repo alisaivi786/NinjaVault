@@ -234,6 +234,18 @@ using HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "char
 | Dependencies | `Microsoft.Extensions.Http`, `Options`, `Logging.Abstractions` 8.0+ |
 | Source Link / symbols | ✅ |
 
+## NinjaVault SDKs
+
+The same CDN client in every language, with the same features and the **same version number** (for example `100.42.1` everywhere):
+
+| Language | Package | Install | Source |
+|---|---|---|---|
+| .NET 8+ | [`NinjaVault.Cdn`](https://www.nuget.org/packages/NinjaVault.Cdn) | `dotnet add package NinjaVault.Cdn` | [NinjaVault](https://github.com/alisaivi786/NinjaVault) |
+| Python 3.10+ | [`ninjavault-cdn`](https://pypi.org/project/ninjavault-cdn/) | `pip install ninjavault-cdn` | [NinjaVault-Python](https://github.com/alisaivi786/NinjaVault-Python) |
+| Node.js 18+ | [`@ninjavault/cdn`](https://www.npmjs.com/package/@ninjavault/cdn) | `npm install @ninjavault/cdn` | [NinjaVault-Node](https://github.com/alisaivi786/NinjaVault-Node) |
+
+---
+
 ## Links
 
 - Source, issues and release notes: <https://github.com/alisaivi786/NinjaVault>

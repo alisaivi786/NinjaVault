@@ -144,7 +144,14 @@ namespace NinjaVault.Cdn
             string baseUrl = options.Value.PublicBaseUrl ?? options.Value.BaseUrl;
             ThrowIfBlank(baseUrl, nameof(NinjaVaultCdnOptions.PublicBaseUrl));
 
-            return baseUrl.TrimEnd('/') + "/public/" + EncodePathSegment(bucket) + "/" + EncodeObjectKey(objectKey);
+            // The server's own PublicBaseUrl setting already ends in "/public"; accept either form.
+            string root = baseUrl.TrimEnd('/');
+            if (root.EndsWith("/public", StringComparison.OrdinalIgnoreCase))
+            {
+                root = root[..^"/public".Length];
+            }
+
+            return root + "/public/" + EncodePathSegment(bucket) + "/" + EncodeObjectKey(objectKey);
         }
 
         private HttpRequestMessage CreateRequest(HttpMethod method, string path)

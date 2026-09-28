@@ -4,7 +4,7 @@
     <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <IsPackable>true</IsPackable>
     <PackageId>NinjaVault.Http</PackageId>
-    <Version>100.42.0.1</Version>
+    <Version>100.42.1</Version>
     <Title>NinjaVault Http</Title>
     <Description>Typed HttpClient registration for third-party APIs with automatic request/response logging (sensitive headers redacted, binary bodies omitted), a pluggable persistence sink, and X-Correlation-Id propagation.</Description>
     <PackageTags>ninjavault http httpclient httpclientfactory delegatinghandler logging correlation-id external-api aspnetcore</PackageTags>

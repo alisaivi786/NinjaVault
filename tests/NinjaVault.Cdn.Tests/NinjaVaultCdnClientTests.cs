@@ -431,6 +431,40 @@ public sealed class NinjaVaultCdnClientTests
         Assert.Equal("https://cdn.test", provider.GetRequiredService<IOptions<NinjaVaultCdnOptions>>().Value.BaseUrl);
     }
 
+    [Theory]
+    [InlineData("https://public.test/public")]
+    [InlineData("https://public.test/public/")]
+    [InlineData("https://public.test")]
+    public void BuildPublicUrl_AcceptsBaseWithOrWithoutPublicSuffix(string publicBaseUrl)
+    {
+        NinjaVaultCdnClient client = new(
+            new HttpClient(new StubHttpMessageHandler((_, _) => Task.FromResult(StubResponses.Ok("{}")))),
+            Options.Create(new NinjaVaultCdnOptions { BaseUrl = "https://cdn.test", PublicBaseUrl = publicBaseUrl, ApiKey = "k" }));
+
+        Assert.Equal("https://public.test/public/assets/logo.png", client.BuildPublicUrl("assets", "logo.png"));
+    }
+
+    [Fact]
+    public async Task UploadAsync_ReadsViewUrlWhenPresent()
+    {
+        StubHttpMessageHandler handler = new((_, _) => Task.FromResult(StubResponses.Ok("""
+        {
+          "success": true,
+          "data": {
+            "id": "1cf8e5e6-21f0-49a5-90b1-5c0f985c9df7", "bucket": "documents", "objectKey": "a.pdf",
+            "originalFileName": "a.pdf", "contentType": "application/pdf", "sizeBytes": 1, "visibility": "Private",
+            "url": "https://cdn.test/api/v1/files/documents/a.pdf", "viewUrl": "https://cdn.test/view/documents/a.pdf"
+          }
+        }
+        """)));
+        using MemoryStream stream = new([1]);
+
+        CdnUploadResult result = await CreateClient(handler).UploadAsync(
+            new CdnUploadRequest("documents", 1, stream, "a.pdf"), TestContext.Current.CancellationToken);
+
+        Assert.Equal("https://cdn.test/view/documents/a.pdf", result.ViewUrl);
+    }
+
     private static INinjaVaultCdnClient CreateClient(StubHttpMessageHandler handler, string baseUrl = "https://cdn.test")
     {
         HttpClient httpClient = new(handler);
