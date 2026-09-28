@@ -1,20 +1,86 @@
-# NinjaVault.Cdn
+<p align="center">
+  <img src="https://raw.githubusercontent.com/alisaivi786/NinjaVault/main/assets/icon-512.png" width="112" alt="NinjaVault" />
+</p>
 
-Typed .NET client for the **NinjaVault CDN Server** API-key integration: bucket discovery, upload,
-listing, metadata, download, delete, and presigned/public URLs. It handles the multipart form
-fields, object-key encoding and JSON success/error envelope for you.
+<h1 align="center">NinjaVault.Cdn</h1>
 
-Targets `net8.0`, `net9.0` and `net10.0`.
+<p align="center">
+  Typed .NET client for the <b>NinjaVault CDN Server</b>: upload, search, download and share files with one injected interface.
+</p>
 
-## 1. Install
+<p align="center">
+  <a href="https://www.nuget.org/packages/NinjaVault.Cdn"><img src="https://img.shields.io/nuget/v/NinjaVault.Cdn.svg?label=NinjaVault.Cdn" alt="NuGet version" /></a>
+  <a href="https://www.nuget.org/packages/NinjaVault.Cdn"><img src="https://img.shields.io/nuget/dt/NinjaVault.Cdn.svg" alt="NuGet downloads" /></a>
+  <a href="https://github.com/alisaivi786/NinjaVault/actions/workflows/ci.yml"><img src="https://github.com/alisaivi786/NinjaVault/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <img src="https://img.shields.io/badge/.NET-8%20%7C%209%20%7C%2010-512BD4" alt=".NET 8, 9, 10" />
+  <a href="https://github.com/alisaivi786/NinjaVault/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT" /></a>
+</p>
+
+---
+
+## Why NinjaVault.Cdn
+
+- **One interface, every operation.** Upload, list/search, metadata, usage summary, download, soft delete, public URLs, and single or batch presigned URLs.
+- **No HTTP plumbing.** Handles the `X-Api-Key` header, multipart fields, object-key encoding, and the JSON success/error envelope for you.
+- **Typed errors.** Every failure is a `CdnApiException` with the HTTP status, CDN error code, trace id, validation details, and `Retry-After`.
+- **Observable by default.** Every call is logged through [NinjaVault.Http](https://www.nuget.org/packages/NinjaVault.Http), with the API key redacted, file bytes never logged, and an `X-Correlation-Id` header added.
+- **Plays well with your stack.** Built on `IHttpClientFactory`, so you can chain Polly or `Microsoft.Extensions.Http.Resilience`, and the interface is easy to mock in tests.
+- **Streams large files.** Downloads are handed to you as a stream and never buffered in memory.
+
+---
+
+## Quick start
+
+**1. Install**
 
 ```bash
 dotnet add package NinjaVault.Cdn
 ```
 
-`NinjaVault.Http` (request logging + correlation id) is installed automatically as a dependency.
+**2. Configure** (`appsettings.json`)
 
-## 2. appsettings.json
+```json
+{
+  "NinjaVault": {
+    "Cdn": {
+      "BaseUrl": "https://cdn.example.com",
+      "ApiKey": ""
+    }
+  }
+}
+```
+
+Keep the API key out of the file:
+
+```bash
+dotnet user-secrets set "NinjaVault:Cdn:ApiKey" "cdn_xxxxx"     # local development
+export NinjaVault__Cdn__ApiKey="cdn_xxxxx"                        # servers / containers
+```
+
+**3. Register and use**
+
+```csharp
+builder.Services.AddNinjaVaultCdn(builder.Configuration);
+```
+
+```csharp
+public sealed class InvoiceService(INinjaVaultCdnClient cdn)
+{
+    public async Task<string> SaveAsync(Stream pdf, long tenantId, CancellationToken ct)
+    {
+        CdnUploadResult file = await cdn.UploadAsync(
+            new CdnUploadRequest("documents", tenantId, pdf, "invoice.pdf", "application/pdf"), ct);
+
+        return file.ObjectKey; // store Bucket + ObjectKey in your database
+    }
+}
+```
+
+That's it. Everything below is optional.
+
+---
+
+## Configuration reference
 
 ```json
 {
@@ -22,334 +88,236 @@ dotnet add package NinjaVault.Cdn
     "Cdn": {
       "BaseUrl": "https://cdn.example.com",
       "PublicBaseUrl": "https://cdn.example.com",
-      "ApiKey": "cdn_xxxxx"
+      "ApiKey": ""
+    },
+    "ExternalApiLogging": {
+      "Enabled": true,
+      "CaptureRequestBody": true,
+      "CaptureResponseBody": true,
+      "MaxBodyLength": 8192,
+      "SensitiveHeaders": []
     }
   }
 }
 ```
 
-| Key | Required | Description |
-|---|---|---|
-| `NinjaVault:Cdn:BaseUrl` | Yes | Base URL for the authenticated `/api/v1/...` routes. A path prefix (e.g. `https://gateway.example.com/cdn`) is supported. |
-| `NinjaVault:Cdn:ApiKey` | Yes | The `X-Api-Key` value issued for this integration. **Backend-only secret** - store it in configuration/secret manager, never ship it to a browser, mobile app, or client-side JS. |
-| `NinjaVault:Cdn:PublicBaseUrl` | No | Base host for anonymous `/public/...` delivery. Falls back to `BaseUrl` if omitted. |
+| Key | Required | Default | Description |
+|---|:---:|---|---|
+| `NinjaVault:Cdn:BaseUrl` | ✅ | none | Base URL of the authenticated `/api/v1/...` routes. A path prefix works (`https://gateway.example.com/cdn`). |
+| `NinjaVault:Cdn:ApiKey` | ✅ | none | The `X-Api-Key` issued for your integration. **Backend-only secret.** |
+| `NinjaVault:Cdn:PublicBaseUrl` | | `BaseUrl` | Host for anonymous public files. **Host only**; the client appends `/public/`. |
+| `NinjaVault:ExternalApiLogging:*` | | see [NinjaVault.Http](https://www.nuget.org/packages/NinjaVault.Http) | Request/response logging for every CDN call. |
 
-In production, source `ApiKey` from your secret manager or an environment variable
-(`NinjaVault__Cdn__ApiKey`) rather than committing it to `appsettings.json`.
+Environment variables use `__` in place of `:` (for example `NinjaVault__Cdn__BaseUrl`).
 
-## 3. Register the client
+### Configure in code instead
 
 ```csharp
-builder.Services.AddNinjaVaultCdn(builder.Configuration);
-
-// or configure in code
 builder.Services.AddNinjaVaultCdn(options =>
 {
     options.BaseUrl = "https://cdn.example.com";
-    options.ApiKey = builder.Configuration["CdnApiKey"]!;
+    options.ApiKey = builder.Configuration["Secrets:CdnApiKey"]!;
 });
 ```
 
-`AddNinjaVaultCdn` also registers `NinjaVault.Http`, so every CDN call is logged (API key redacted,
-file bytes never logged) and carries an `X-Correlation-Id` header. To persist those logs, register
-your own `IExternalApiCallLogSink` after this call.
+### Add resilience (retries, timeouts, circuit breaker)
 
-Both overloads return `IHttpClientBuilder`, so you can chain your own handlers, e.g. retries with
-`Microsoft.Extensions.Http.Resilience`:
+Both `AddNinjaVaultCdn` overloads return `IHttpClientBuilder`:
 
 ```csharp
+// dotnet add package Microsoft.Extensions.Http.Resilience
 builder.Services.AddNinjaVaultCdn(builder.Configuration)
     .AddStandardResilienceHandler();
 ```
 
-Inject `INinjaVaultCdnClient` wherever you need it:
+### Verify the key at startup (recommended)
 
 ```csharp
-public sealed class DocumentService(INinjaVaultCdnClient cdn)
+using (IServiceScope scope = app.Services.CreateScope())
 {
-    // ...
+    INinjaVaultCdnClient cdn = scope.ServiceProvider.GetRequiredService<INinjaVaultCdnClient>();
+    CdnAccessContext access = await cdn.GetAccessContextAsync();
+    // access.AllowedBuckets / AllowedTenantIds empty = unrestricted, not "no access"
 }
 ```
 
-## 4. Verify access at startup (recommended)
+---
 
-Call this once during startup/health-check to confirm the API key and inspect its scope before
-relying on it:
+## Usage
+
+All examples assume `INinjaVaultCdnClient cdn` is injected and `ct` is a `CancellationToken`.
+
+### Upload
 
 ```csharp
-CdnAccessContext access = await cdn.GetAccessContextAsync(cancellationToken);
+CdnUploadResult uploaded = await cdn.UploadAsync(new CdnUploadRequest(
+    Bucket: "documents",
+    TenantId: 42,
+    File: stream,
+    FileName: "report.docx",
+    ContentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    OwnerId: 1001,                 // optional
+    FolderPath: "reports/2026"),   // optional: up to 8 segments of [A-Za-z0-9_-]
+    ct);
 
-// access.IsUnrestricted / access.AllowedTenantIds empty => access to every tenant, not "no access"
-// access.AllowedBuckets empty => access to every bucket
-foreach (CdnAccessBucket bucket in access.Buckets)
+// uploaded.Bucket + uploaded.ObjectKey identify the file from now on (not the original file name).
+```
+
+Allowed content types and the maximum size are set per CDN deployment (commonly PDF, JPEG, PNG, WEBP, DOC and DOCX, up to about 25 MB). Anything outside them fails with `40001`.
+
+### Give a browser or mobile app access
+
+| The file is in... | Use | Makes an HTTP call? | Link lifetime |
+|---|---|:---:|---|
+| a **Public** bucket | `cdn.BuildPublicUrl(bucket, objectKey)` | no | permanent |
+| a **Private** bucket | `cdn.CreatePresignedUrlAsync(...)` | yes | short (you choose) |
+| many private files | `cdn.CreatePresignedUrlsAsync(...)` | yes, once | short |
+
+```csharp
+string logoUrl = cdn.BuildPublicUrl("public-assets", objectKey);
+
+CdnPresignedUrl link = await cdn.CreatePresignedUrlAsync(
+    new CdnPresignRequest("documents", objectKey, ExpirySeconds: 600), ct);
+
+CdnPresignBatchResult batch = await cdn.CreatePresignedUrlsAsync(new CdnPresignBatchRequest(
+    [new CdnPresignTarget("documents", keyA), new CdnPresignTarget("documents", keyB)],
+    ExpirySeconds: 600), ct);
+
+foreach (CdnPresignFailure failed in batch.Failed)   // batch returns 200 even if some fail
 {
-    Console.WriteLine($"{bucket.Name}: {bucket.Visibility}");
+    logger.LogWarning("{Key}: {Reason}", failed.ObjectKey, failed.Reason);
 }
 ```
 
-## 5. Discover buckets
+> Never send the API key to a browser or mobile app. Give them a public or presigned URL instead.
+
+### Download (backend to backend)
 
 ```csharp
-IReadOnlyList<CdnBucket> buckets = await cdn.ListBucketsAsync(cancellationToken);
+await using CdnFileDownload download = await cdn.DownloadAsync("documents", objectKey, ct);
 
-foreach (CdnBucket bucket in buckets)
+// Stream straight through without loading the file into memory
+return Results.Stream(download.Content, download.ContentType, download.FileName);
+```
+
+### Search and list
+
+```csharp
+CdnPagedResult<CdnFileObject> page = await cdn.ListFilesAsync(new CdnFileListQuery
 {
-    Console.WriteLine($"{bucket.Name} ({bucket.Visibility}) - {bucket.FileCount} files, {bucket.TotalSizeBytes} bytes");
-}
+    Bucket = "documents",
+    TenantId = 42,
+    OwnerId = 1001,
+    ObjectKeyPrefix = "reports/2026",
+    FileNameContains = "invoice",
+    Category = CdnFileCategory.Document,
+    CreatedFromUtc = DateTimeOffset.UtcNow.AddDays(-30),
+    SortBy = CdnFileSortBy.CreatedAtUtc,
+    SortDescending = true,
+    Page = 1,
+    PageSize = 50
+}, ct);
 ```
 
-## 6. Upload a file
-
-`UploadAsync` sends `multipart/form-data`. Any readable `Stream` works - below are examples for
-the file kinds this client is commonly used with (PDF, image, Office document, video, and a
-generic/unknown binary). The server enforces its own content-type allow-list and max size per
-deployment (see the note at the end of this section) - it is not something the client validates
-locally.
+### Metadata, usage, buckets, delete
 
 ```csharp
-public sealed class DocumentService(INinjaVaultCdnClient cdn)
-{
-    // PDF, e.g. a generated invoice
-    public Task<CdnUploadResult> UploadInvoicePdfAsync(Stream pdf, long tenantId, long ownerId, CancellationToken ct)
-        => cdn.UploadAsync(
-            new CdnUploadRequest(
-                Bucket: "documents",
-                TenantId: tenantId,
-                File: pdf,
-                FileName: "invoice.pdf",
-                ContentType: "application/pdf",
-                OwnerId: ownerId,
-                FolderPath: "invoices/2026"),
-            ct);
-
-    // Image, e.g. a profile photo or scanned receipt
-    public Task<CdnUploadResult> UploadImageAsync(Stream image, long tenantId, CancellationToken ct)
-        => cdn.UploadAsync(
-            new CdnUploadRequest(
-                Bucket: "public-assets",
-                TenantId: tenantId,
-                File: image,
-                FileName: "avatar.png",
-                ContentType: "image/png",
-                FolderPath: "avatars"),
-            ct);
-
-    // Office document, e.g. an exported Word/Excel report
-    public Task<CdnUploadResult> UploadWordDocumentAsync(Stream docx, long tenantId, long ownerId, CancellationToken ct)
-        => cdn.UploadAsync(
-            new CdnUploadRequest(
-                Bucket: "documents",
-                TenantId: tenantId,
-                File: docx,
-                FileName: "report.docx",
-                ContentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                OwnerId: ownerId,
-                FolderPath: "reports/2026"),
-            ct);
-
-    // Video (only upload this if the deployment's content-type allow-list permits it)
-    public Task<CdnUploadResult> UploadVideoAsync(Stream video, long tenantId, CancellationToken ct)
-        => cdn.UploadAsync(
-            new CdnUploadRequest(
-                Bucket: "documents",
-                TenantId: tenantId,
-                File: video,
-                FileName: "walkthrough.mp4",
-                ContentType: "video/mp4"),
-            ct);
-
-    // Unknown/generic binary - let the server infer/validate the content type from the extension
-    public Task<CdnUploadResult> UploadGenericFileAsync(Stream file, string fileName, long tenantId, CancellationToken ct)
-        => cdn.UploadAsync(
-            new CdnUploadRequest(
-                Bucket: "documents",
-                TenantId: tenantId,
-                File: file,
-                FileName: fileName),
-            ct);
-}
+CdnFileObject info       = await cdn.GetMetadataAsync("documents", objectKey, ct); // checksum, category, thumbnail...
+CdnFileSummary usage     = await cdn.GetSummaryAsync("documents", ct);             // totals per category
+IReadOnlyList<CdnBucket> buckets = await cdn.ListBucketsAsync(ct);                 // visibility + counters
+await cdn.DeleteAsync("documents", objectKey, ct);                                 // soft delete
 ```
 
-`UploadAsync` returns `CdnUploadResult` - `Id`, `Bucket`, `ObjectKey`, `OriginalFileName`,
-`ContentType`, `SizeBytes`, `Visibility`, `Url`. This is the API's actual upload-response shape;
-it is smaller than `CdnFileObject` (no tenant, checksum, category, or thumbnail fields - those are
-only returned by list/metadata). Persist `Bucket` and `ObjectKey` in your own database: the
-**object key**, not the original file name, is what you need to fetch the file again later. Call
-`GetMetadataAsync` afterward if you need the full detail (checksum, category, thumbnail status).
+---
 
-> **FolderPath** is optional, max 8 `/`-separated segments, each matching `^[A-Za-z0-9][A-Za-z0-9_-]*$`.
-> Not validated client-side - a bad value surfaces as a 400 `ValidationFailed` only once the
-> request reaches the server.
->
-> **Size/content-type limits** are configured per deployment. The ASP.NET route ceiling is 100 MB,
-> but the actual enforced business limit is commonly smaller (e.g. 25 MB) with a small allow-list
-> of content types (PDF, JPEG, PNG, WEBP, DOC, DOCX are typical defaults). Neither limit is
-> discoverable through the API - confirm them with whoever manages your CDN deployment, and expect
-> a 400 `ValidationFailed` for anything outside them.
-
-## 7. List / search files
-
-```csharp
-CdnPagedResult<CdnFileObject> page = await cdn.ListFilesAsync(
-    new CdnFileListQuery
-    {
-        Bucket = "documents",
-        TenantId = 42,
-        OwnerId = 1001,
-        ObjectKeyPrefix = "owner-token/invoices",
-        Category = CdnFileCategory.Document,
-        Visibility = CdnBucketVisibility.Private,
-        FileNameContains = "invoice",
-        SortBy = CdnFileSortBy.CreatedAtUtc,
-        SortDescending = true,
-        Page = 1,
-        PageSize = 50
-    },
-    cancellationToken);
-
-foreach (CdnFileObject file in page.Items)
-{
-    Console.WriteLine($"{file.OriginalFileName} ({file.Category}, {file.SizeBytes} bytes)");
-}
-```
-
-## 8. Read metadata for one file (no bytes transferred)
-
-```csharp
-CdnFileObject file = await cdn.GetMetadataAsync("documents", objectKey, cancellationToken);
-```
-
-## 9. Usage summary (dashboards / file-manager cards)
-
-```csharp
-CdnFileSummary summary = await cdn.GetSummaryAsync(bucket: "documents", cancellationToken: cancellationToken);
-
-Console.WriteLine($"{summary.TotalFileCount} files, {summary.TotalSizeBytes} bytes");
-foreach (CdnFileCategorySummary category in summary.Categories)
-{
-    Console.WriteLine($"{category.Category}: {category.FileCount} files, {category.TotalSizeBytes} bytes");
-}
-```
-
-## 10. Download a file (backend-to-backend only)
-
-```csharp
-await using CdnFileDownload download = await cdn.DownloadAsync("documents", objectKey, cancellationToken);
-
-// download.Content is a Stream; download.ContentType / download.FileName / download.SizeBytes are also available
-await using FileStream target = File.Create(download.FileName ?? "download.bin");
-await download.Content.CopyToAsync(target, cancellationToken);
-```
-
-Use this only from backend code. Never forward the API key to a browser/mobile client to hit this
-route directly - use a presigned URL (below) instead.
-
-## 11. Delete a file (soft delete)
-
-```csharp
-await cdn.DeleteAsync("documents", objectKey, cancellationToken);
-```
-
-## 12. Public URLs (Public-visibility buckets)
-
-```csharp
-string url = cdn.BuildPublicUrl("public-assets", objectKey);
-```
-
-This is pure local string construction - no HTTP call is made, and it does not verify the bucket
-is actually `Public` or that the object exists. Use it only for files you uploaded into a bucket
-you know is `Public`.
-
-## 13. Presigned URLs (private files, browser/mobile clients)
-
-Single file:
-
-```csharp
-CdnPresignedUrl presigned = await cdn.CreatePresignedUrlAsync(
-    new CdnPresignRequest("documents", objectKey, ExpirySeconds: 300),
-    cancellationToken);
-
-return presigned.Url; // hand this to the browser/mobile client - never the API key itself
-```
-
-Leave `ExpirySeconds` `null` to use the server's configured default (300s at time of writing;
-the server clamps to its own max regardless of what's requested). Keep expiry short - 5 to 15
-minutes is typical.
-
-Batch (many files in one call):
-
-```csharp
-CdnPresignBatchResult result = await cdn.CreatePresignedUrlsAsync(
-    new CdnPresignBatchRequest(
-        Targets:
-        [
-            new CdnPresignTarget("documents", "owner-token/invoices/2026/a.pdf"),
-            new CdnPresignTarget("documents", "owner-token/invoices/2026/b.pdf")
-        ],
-        ExpirySeconds: 300),
-    cancellationToken);
-
-// Batch presign returns HTTP 200 even when some targets fail - always check Failed.
-foreach (CdnPresignedTarget ok in result.Succeeded)
-{
-    Console.WriteLine($"{ok.ObjectKey} -> {ok.Url}");
-}
-
-foreach (CdnPresignFailure failed in result.Failed)
-{
-    Console.WriteLine($"{failed.ObjectKey} failed: {failed.Reason}"); // "NotFound" or "Forbidden"
-}
-```
-
-## 14. Error handling
-
-Every failed call throws `CdnApiException` (derives from `HttpRequestException`):
+## Error handling
 
 ```csharp
 try
 {
-    await cdn.UploadAsync(request, cancellationToken);
+    await cdn.UploadAsync(request, ct);
+}
+catch (CdnApiException ex) when (ex.ErrorCode == 42901 && ex.RetryAfter is { } wait)
+{
+    await Task.Delay(wait, ct); // rate limited: back off exactly as long as the server asks
 }
 catch (CdnApiException ex)
 {
-    logger.LogWarning(
-        "CDN call failed: {StatusCode} {ErrorCode} {Message} (trace {CorrelationId})",
-        ex.StatusCode, ex.ErrorCode, ex.Message, ex.CorrelationId);
+    logger.LogWarning("CDN {Status} {Code}: {Message} (trace {TraceId})",
+        (int?)ex.StatusCode, ex.ErrorCode, ex.Message, ex.CorrelationId);
 
-    if (ex.ErrorCode == 42901 && ex.RetryAfter is { } retryAfter) // TooManyRequests
+    foreach ((string field, string[] errors) in ex.Details ?? new Dictionary<string, string[]>())
     {
-        await Task.Delay(retryAfter, cancellationToken);
-        // ...retry
-    }
-
-    if (ex.Details is not null)
-    {
-        foreach ((string field, string[] errors) in ex.Details)
-        {
-            logger.LogWarning("{Field}: {Errors}", field, string.Join(", ", errors));
-        }
+        logger.LogWarning("{Field}: {Errors}", field, string.Join(", ", errors));
     }
 }
 ```
 
-| `ErrorCode` | HTTP | Meaning |
-|---|---|---|
-| `40001` | 400 | ValidationFailed - bad request body/query/form data, disallowed content type, oversized file, invalid `FolderPath`. |
-| `40101` | 401 | Unauthorized - missing/invalid/revoked API key. |
-| `40301` | 403 | Forbidden - key valid but not allowed for this tenant/bucket/file. |
-| `40401` | 404 | NotFound - bucket/file/object key not found. |
-| `40901` | 409 | Conflict - quota exceeded or conflicting state. |
-| `42901` | 429 | TooManyRequests - rate limit/quota exceeded. `CdnApiException.RetryAfter` is populated when the server sends a `Retry-After` header. |
-| `50001` | 500 | InternalServerError. |
+| `ErrorCode` | HTTP | Meaning | What to check |
+|---|:---:|---|---|
+| `40001` | 400 | Validation failed | `FolderPath` format, content type, file size, `ex.Details` |
+| `40101` | 401 | Unauthorized | `ApiKey` missing, mistyped, or revoked |
+| `40301` | 403 | Forbidden | Key not allowed for this bucket or tenant (`GetAccessContextAsync`) |
+| `40401` | 404 | Not found | Bucket name or object key (use `ObjectKey`, not the file name) |
+| `40901` | 409 | Conflict | Quota exceeded or conflicting state |
+| `42901` | 429 | Too many requests | Wait for `ex.RetryAfter` |
+| `50001` | 500 | Server error | Retry later; send `ex.CorrelationId` to the CDN team |
 
-`CorrelationId` is the server's trace id for the failed request - log it so support/backend teams
-can cross-reference server logs.
+---
 
-## What the client covers
+## Logging and correlation
 
-Access validation, bucket discovery, multipart upload, file listing/search, metadata lookup,
-usage summary, authenticated download, soft delete, public URL building, and single/batch
-presigned URLs. Anonymous redemption routes (`/public/...`, `/files/presigned/...`,
-`/files/thumbnails/...`) are intentionally **not** wrapped here - those are meant to be hit
-directly by the browser/mobile client using the URL your backend already produced, without an
-API key.
+`AddNinjaVaultCdn` also registers [NinjaVault.Http](https://www.nuget.org/packages/NinjaVault.Http). With no extra code, every CDN call:
+
+- writes one structured log line (service `NinjaVaultCdn`, URL, status, elapsed ms, correlation id) through `ILogger`, so it goes to Serilog, the console, Application Insights, or whatever logging you already have;
+- carries an `X-Correlation-Id` header;
+- redacts `X-Api-Key`, and records uploads and downloads as a small `{ "omitted": true, ... }` placeholder instead of bytes.
+
+To keep full call records (headers and bodies) in your own store, register a sink:
+
+```csharp
+builder.Services.AddScoped<IExternalApiCallLogSink, MyDbApiLogSink>();
+```
+
+See the [NinjaVault.Http README](https://www.nuget.org/packages/NinjaVault.Http) for the sink, correlation middleware, and every logging option.
+
+---
+
+## Unit testing your code
+
+Depend on `INinjaVaultCdnClient` and mock it with any library:
+
+```csharp
+var cdn = Substitute.For<INinjaVaultCdnClient>();
+cdn.BuildPublicUrl("public-assets", "logo.png").Returns("https://cdn.test/public/public-assets/logo.png");
+
+var service = new BrandingService(cdn);
+```
+
+---
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| Public URLs contain `/public/public/` | Set `PublicBaseUrl` to the host only (`https://cdn.example.com`), or remove it. |
+| `ArgumentException: BaseUrl` / `ApiKey` | The `NinjaVault:Cdn` section wasn't found. Check the section name and your environment's appsettings file. |
+| `40101` on every call | Wrong or rotated key. Check the environment variable `NinjaVault__Cdn__ApiKey`. |
+| `40001` on upload | Invalid `FolderPath` (max 8 segments of `[A-Za-z0-9_-]`, each starting with a letter or digit), or a file type/size the deployment doesn't allow. |
+| File not found after upload | Fetch with the returned `ObjectKey`, not the original file name. |
+
+---
+
+## Compatibility
+
+| | |
+|---|---|
+| Target frameworks | `net8.0`, `net9.0`, `net10.0` |
+| Dependencies | `NinjaVault.Http`, `Microsoft.Extensions.Http` 8.0+ |
+| Source Link / symbols | ✅ Step into the package source while debugging |
+
+## Links
+
+- Source, issues and release notes: <https://github.com/alisaivi786/NinjaVault>
+- Change-sets: <https://github.com/alisaivi786/NinjaVault/tree/main/changesets/NinjaVault.Cdn>
+- License: MIT

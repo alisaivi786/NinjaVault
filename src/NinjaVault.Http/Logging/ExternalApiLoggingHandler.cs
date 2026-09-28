@@ -25,6 +25,10 @@ public sealed class ExternalApiLoggingHandler(
             new EventId(3002, nameof(SinkFailed)),
             "External API call log sink failed for service {ServiceName}.");
 
+    // Responses that declare a larger Content-Length are never buffered for logging.
+    private const long MaxBufferedResponseBytes = 1024 * 1024;
+    private const string BinaryReason = "binary or multipart body - not logged";
+    private const string TooLargeReason = "body larger than 1 MB - not buffered or logged";
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
@@ -142,6 +146,18 @@ public sealed class ExternalApiLoggingHandler(
             return string.Empty;
         }
 
+        // Decide from the headers BEFORE buffering: buffering a file download would pull the whole
+        // payload into memory just to log a placeholder, and would stop the caller from streaming it.
+        if (IsBinaryOrMultipart(content))
+        {
+            return BuildOmittedBodyPlaceholder(content);
+        }
+
+        if (content.Headers.ContentLength > MaxBufferedResponseBytes)
+        {
+            return BuildOmittedBodyPlaceholder(content, TooLargeReason);
+        }
+
         // Buffer so the caller can still read the response stream after we capture it.
 #if NET9_0_OR_GREATER
         await content.LoadIntoBufferAsync(cancellationToken);
@@ -149,11 +165,6 @@ public sealed class ExternalApiLoggingHandler(
         cancellationToken.ThrowIfCancellationRequested();
         await content.LoadIntoBufferAsync();
 #endif
-
-        if (IsBinaryOrMultipart(content))
-        {
-            return BuildOmittedBodyPlaceholder(content);
-        }
 
         string body = await content.ReadAsStringAsync(cancellationToken);
         return Truncate(body, maxLength);
@@ -185,11 +196,11 @@ public sealed class ExternalApiLoggingHandler(
     // A small JSON record beats a fixed string here: it still tells the reader what happened, but also
     // carries the content type and size, which is often exactly what you'd want to eyeball a binary
     // upload/download in the log without ever writing its bytes anywhere.
-    private static string BuildOmittedBodyPlaceholder(HttpContent content)
+    private static string BuildOmittedBodyPlaceholder(HttpContent content, string reason = BinaryReason)
         => JsonSerializer.Serialize(
             new OmittedBodyPlaceholder(
                 Omitted: true,
-                Reason: "binary or multipart body - not logged",
+                Reason: reason,
                 ContentType: content.Headers.ContentType?.ToString(),
                 SizeBytes: content.Headers.ContentLength),
             OmittedBodyJsonOptions);
