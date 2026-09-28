@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1E1B4B"/>
+      <stop offset="1" stop-color="#0B1022"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <radialGradient id="steel" cx="0.38" cy="0.32" r="0.8">
+      <stop offset="0" stop-color="#F1F5F9"/>
+      <stop offset="0.55" stop-color="#94A3B8"/>
+      <stop offset="1" stop-color="#475569"/>
+    </radialGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1E293B"/>
+      <stop offset="1" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="red" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#F43F5E"/>
+      <stop offset="1" stop-color="#DC2626"/>
+    </linearGradient>
+    <clipPath id="head"><circle cx="248" cy="268" r="150"/></clipPath>
+      <radialGradient id="glow" cx="0.5" cy="0.45" r="0.6">
+      <stop offset="0" stop-color="#312E81" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#0B1022" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect width="512" height="512" fill="url(#glow)"/>
+  <g transform="translate(256 256) scale(0.8) translate(-248 -262)">
+
+  <!-- vault door outer ring + bolts -->
+  <circle cx="248" cy="268" r="178" fill="none" stroke="url(#ring)" stroke-width="22"/>
+  <g fill="#CBD5E1">
+    <circle cx="248" cy="90"  r="10"/><circle cx="248" cy="446" r="10"/>
+    <circle cx="70"  cy="268" r="10"/><circle cx="426" cy="268" r="10"/>
+    <circle cx="122" cy="142" r="10"/><circle cx="374" cy="394" r="10"/>
+    <circle cx="122" cy="394" r="10"/><circle cx="374" cy="142" r="10"/>
+  </g>
+
+  <!-- head = steel vault door -->
+  <circle cx="248" cy="268" r="150" fill="url(#steel)"/>
+  <g clip-path="url(#head)">
+    <!-- dial ticks on the lower half -->
+    <g stroke="#334155" stroke-width="6" stroke-linecap="round" opacity="0.55">
+      <line x1="248" y1="400" x2="248" y2="378"/>
+      <line x1="188" y1="386" x2="198" y2="366"/>
+      <line x1="308" y1="386" x2="298" y2="366"/>
+      <line x1="140" y1="352" x2="158" y2="338"/>
+      <line x1="356" y1="352" x2="338" y2="338"/>
+    </g>
+    <!-- ninja mask band -->
+    <rect x="80" y="200" width="340" height="104" fill="url(#band)"/>
+    <!-- red headband above the mask -->
+    <rect x="80" y="168" width="340" height="30" fill="url(#red)"/>
+  </g>
+
+  <!-- eyes -->
+  <path d="M144 240 L230 258 Q204 284 168 274 Q148 266 144 240 Z" fill="#F8FAFC"/>
+  <path d="M352 240 L266 258 Q292 284 328 274 Q348 266 352 240 Z" fill="#F8FAFC"/>
+  <circle cx="200" cy="264" r="10" fill="#22D3EE"/>
+  <circle cx="296" cy="264" r="10" fill="#22D3EE"/>
+
+  <!-- headband knot + flowing tails -->
+  <circle cx="392" cy="183" r="18" fill="url(#red)"/>
+  <path d="M404 176 C440 150 462 128 480 92 C474 132 452 162 414 190 Z" fill="url(#red)"/>
+  <path d="M406 192 C446 196 470 186 492 160 C482 200 452 214 410 206 Z" fill="#E11D48"/>
+</g>
+</svg>

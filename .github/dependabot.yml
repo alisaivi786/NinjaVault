@@ -4,8 +4,22 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    groups:
+      github-actions:
+        patterns: ['*']
+
   - package-ecosystem: nuget
     directory: /
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # Library dependencies stay on the lowest supported major (8.0) so net8.0 consumers are not
+      # forced onto newer Microsoft.Extensions packages. Raise the floor deliberately, not via Dependabot.
+      - dependency-name: 'Microsoft.Extensions.*'
+        update-types: ['version-update:semver-major']
+    groups:
+      microsoft-extensions:
+        patterns: ['Microsoft.Extensions.*']
+      test-tooling:
+        patterns: ['xunit*', 'Microsoft.NET.Test.Sdk', 'coverlet.*']
