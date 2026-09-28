@@ -22,10 +22,14 @@ dotnet add package NinjaVault.Cdn
   "NinjaVault": {
     "Cdn": {
       "BaseUrl": "https://cdn.example.com",
-      "ApiKey": "cdn_xxxxx"
+      "ApiKey": ""
     }
   }
 }
+```
+
+```bash
+dotnet user-secrets set "NinjaVault:Cdn:ApiKey" "cdn_xxxxx"   # or env var NinjaVault__Cdn__ApiKey
 ```
 
 ```csharp
@@ -37,6 +41,19 @@ public sealed class DocumentService(INinjaVaultCdnClient cdn)
         => cdn.UploadAsync(new CdnUploadRequest("documents", tenantId, pdf, "invoice.pdf", "application/pdf"), ct);
 }
 ```
+
+Want request/response logging and a correlation id on CDN calls? Add the optional package:
+
+```bash
+dotnet add package NinjaVault.Http
+```
+
+```csharp
+builder.Services.AddNinjaVaultCdn(builder.Configuration)
+    .AddNinjaVaultHttpLogging(NinjaVault.Cdn.DependencyInjection.ServiceName);
+```
+
+Or attach your own logging handler; the CDN package adds none by itself.
 
 See the [NinjaVault.Cdn README](src/NinjaVault.Cdn/README.md) for every operation and error code.
 
