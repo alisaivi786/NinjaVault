@@ -1,0 +1,126 @@
+# Publishes to nuget.org with Trusted Publishing (OIDC) - no stored API key.
+# nuget.org policy must match: owner alisaivi786 / repository NinjaVault / workflow publish.yml / environment production.
+#
+# Runs on every push to main that touches a package. Only packages whose current <Version> is not on nuget.org
+# yet are packed and pushed, so a release is: bump <Version> + add changesets/<Id>/<Version>.md + merge to main.
+name: Publish
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'changesets/**'
+      - 'assets/**'
+      - 'Directory.Build.props'
+      - 'Directory.Packages.props'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  publish:
+    name: Publish to nuget.org
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: write   # git tags + GitHub releases
+      id-token: write   # OIDC token for NuGet Trusted Publishing
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - name: Find unpublished package versions
+        id: plan
+        run: |
+          bash scripts/unpublished-packages.sh > plan.txt
+          cat plan.txt
+          if [ -s plan.txt ]; then echo "any=true" >> "$GITHUB_OUTPUT"; else echo "any=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Nothing to publish
+        if: steps.plan.outputs.any != 'true'
+        run: echo "Every package version is already on nuget.org. Bump <Version> and add a change-set to release."
+
+      - name: Restore, build, test
+        if: steps.plan.outputs.any == 'true'
+        run: |
+          dotnet restore NinjaVault.slnx --locked-mode
+          dotnet build NinjaVault.slnx -c Release -warnaserror --no-restore
+          dotnet test NinjaVault.slnx -c Release --no-build
+
+      - name: Change-set check
+        if: steps.plan.outputs.any == 'true'
+        run: |
+          while read -r id version; do
+            bash scripts/check-changesets.sh "$id"
+          done < plan.txt
+
+      - name: Pack
+        if: steps.plan.outputs.any == 'true'
+        run: |
+          while read -r id version; do
+            dotnet pack "src/$id/$id.csproj" -c Release --no-build -p:ContinuousIntegrationBuild=true
+          done < plan.txt
+
+      # The temporary API key is valid for 1 hour, so request it right before pushing.
+      - name: NuGet login (OIDC -> temporary API key)
+        if: steps.plan.outputs.any == 'true'
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push to nuget.org
+        if: steps.plan.outputs.any == 'true'
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: |
+          while read -r id version; do
+            # The matching .snupkg symbol package is pushed automatically.
+            dotnet nuget push "artifacts/packages/$id.$version.nupkg" \
+              --api-key "$NUGET_API_KEY" \
+              --source https://api.nuget.org/v3/index.json \
+              --skip-duplicate
+          done < plan.txt
+
+      - name: Tag and create GitHub releases
+        if: steps.plan.outputs.any == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          while read -r id version; do
+            tag="$id/v$version"
+            if gh release view "$tag" >/dev/null 2>&1; then
+              echo "Release $tag already exists."
+              continue
+            fi
+            gh release create "$tag" \
+              --target "$GITHUB_SHA" \
+              --title "$id $version" \
+              --notes-file "changesets/$id/$version.md" \
+              "artifacts/packages/$id.$version.nupkg"
+          done < plan.txt
+
+      - name: Summary
+        if: steps.plan.outputs.any == 'true'
+        run: |
+          {
+            echo "### Published to nuget.org"
+            while read -r id version; do
+              echo "- [$id $version](https://www.nuget.org/packages/$id/$version)"
+            done < plan.txt
+          } >> "$GITHUB_STEP_SUMMARY"

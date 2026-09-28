@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <IsPackable>true</IsPackable>
+    <PackageId>NinjaVault.Cdn</PackageId>
+    <Version>100.41.0.1</Version>
+    <Title>NinjaVault CDN Client</Title>
+    <Description>Typed .NET client for the NinjaVault CDN Server: API-key auth, bucket discovery, multipart upload, file listing/search, metadata, download, soft delete, public URLs, and single/batch presigned URLs.</Description>
+    <PackageTags>ninjavault cdn cdn-client file-storage upload download presigned-url api-key httpclient aspnetcore</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!-- Multipart content owns child HttpContent instances; CdnFileDownload owns the response stream returned to callers. -->
+    <NoWarn>$(NoWarn);CA2000;IDE0161</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NinjaVault.Http\NinjaVault.Http.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

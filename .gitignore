@@ -1,0 +1,63 @@
+# Build outputs
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / ReSharper
+.idea/
+*.DotSettings.user
+
+# VS Code
+.vscode/
+
+# Visual Studio
+.vs/
+
+# Logs
+*.log
+logs/
+
+# Test output
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+_Generated/
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+
+# Dotnet format backup/artifacts
+*.bak
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local env / secrets
+.env
+.env.*
+secrets.json
+
+# Generated runtime folders
+artifacts/
+
+# Node (if ever used for frontend tooling)
+node_modules/
+
+# Docker overrides local
+docker-compose.override.yml
+
+# Packages / test output
+artifacts/
+TestResults/
+*.nupkg
+*.snupkg

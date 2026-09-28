@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/NinjaVault.Cdn/NinjaVault.Cdn.csproj" />
+    <Project Path="src/NinjaVault.Http/NinjaVault.Http.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/NinjaVault.Cdn.Tests/NinjaVault.Cdn.Tests.csproj" />
+    <Project Path="tests/NinjaVault.Http.Tests/NinjaVault.Http.Tests.csproj" />
+  </Folder>
+</Solution>
