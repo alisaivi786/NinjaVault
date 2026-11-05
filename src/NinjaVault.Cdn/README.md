@@ -66,7 +66,7 @@ builder.Services.AddNinjaVaultCdn(builder.Configuration);
 ```csharp
 public sealed class InvoiceService(INinjaVaultCdnClient cdn)
 {
-    public async Task<string> SaveAsync(Stream pdf, long tenantId, CancellationToken ct)
+    public async Task<string> SaveAsync(Stream pdf, string tenantId, CancellationToken ct)
     {
         CdnUploadResult file = await cdn.UploadAsync(
             new CdnUploadRequest("documents", tenantId, pdf, "invoice.pdf", "application/pdf"), ct);
@@ -130,6 +130,7 @@ using (IServiceScope scope = app.Services.CreateScope())
     INinjaVaultCdnClient cdn = scope.ServiceProvider.GetRequiredService<INinjaVaultCdnClient>();
     CdnAccessContext access = await cdn.GetAccessContextAsync();
     // access.AllowedBuckets / AllowedTenantIds empty = unrestricted, not "no access"
+    // Tenant ids are strings (GUIDs), e.g. "0f8fad5b-d9cb-469f-a165-70867728950e"
 }
 ```
 
@@ -144,7 +145,7 @@ All examples assume `INinjaVaultCdnClient cdn` is injected and `ct` is a `Cancel
 ```csharp
 CdnUploadResult uploaded = await cdn.UploadAsync(new CdnUploadRequest(
     Bucket: "documents",
-    TenantId: 42,
+    TenantId: "0f8fad5b-d9cb-469f-a165-70867728950e",   // tenant GUID, as a string
     File: stream,
     FileName: "report.docx",
     ContentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -198,7 +199,7 @@ return Results.Stream(download.Content, download.ContentType, download.FileName)
 CdnPagedResult<CdnFileObject> page = await cdn.ListFilesAsync(new CdnFileListQuery
 {
     Bucket = "documents",
-    TenantId = 42,
+    TenantId = "0f8fad5b-d9cb-469f-a165-70867728950e",
     OwnerId = 1001,
     ObjectKeyPrefix = "reports/2026",
     FileNameContains = "invoice",
@@ -318,7 +319,7 @@ var service = new BrandingService(cdn);
 
 ## NinjaVault SDKs
 
-The same CDN client in every language, with the same features and the **same version number** (for example `100.42.1` everywhere):
+The same CDN client in every language, with the same features and the **same version number** (for example `100.43.0` everywhere):
 
 | Language | Package | Install | Source |
 |---|---|---|---|

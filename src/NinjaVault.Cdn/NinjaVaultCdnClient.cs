@@ -32,12 +32,13 @@ namespace NinjaVault.Cdn
             ArgumentNullException.ThrowIfNull(request);
             ArgumentNullException.ThrowIfNull(request.File);
             ThrowIfBlank(request.Bucket, nameof(request.Bucket));
+            ThrowIfBlank(request.TenantId, nameof(request.TenantId));
             ThrowIfBlank(request.FileName, nameof(request.FileName));
 
             using MultipartFormDataContent content = new()
             {
                 { new StringContent(request.Bucket), "Bucket" },
-                { new StringContent(request.TenantId.ToString(CultureInfo.InvariantCulture)), "TenantId" }
+                { new StringContent(request.TenantId.Trim()), "TenantId" }
             };
             if (request.OwnerId.HasValue)
             {
@@ -292,7 +293,7 @@ namespace NinjaVault.Cdn
 
             QueryBuilder builder = new();
             builder.Add("bucket", query.Bucket);
-            builder.Add("tenantId", query.TenantId);
+            builder.Add("tenantId", query.TenantId?.Trim());
             builder.Add("ownerId", query.OwnerId);
             builder.Add("objectKeyPrefix", query.ObjectKeyPrefix);
             builder.Add("fileNameContains", query.FileNameContains);

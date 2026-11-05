@@ -3,7 +3,7 @@ namespace NinjaVault.Cdn
     public sealed record CdnFileListQuery
     {
         public string? Bucket { get; init; }
-        public long? TenantId { get; init; }
+        public string? TenantId { get; init; }
         public long? OwnerId { get; init; }
         public string? ObjectKeyPrefix { get; init; }
         public string? FileNameContains { get; init; }
