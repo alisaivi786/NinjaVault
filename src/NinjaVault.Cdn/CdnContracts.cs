@@ -10,7 +10,7 @@ namespace NinjaVault.Cdn
         bool IsUnrestricted,
         bool IsAdmin,
         IReadOnlyList<string> AllowedBuckets,
-        IReadOnlyList<long> AllowedTenantIds,
+        [property: JsonConverter(typeof(TenantIdListJsonConverter))] IReadOnlyList<string> AllowedTenantIds,
         IReadOnlyList<CdnAccessBucket> Buckets);
 
     public sealed record CdnAccessBucket(string Name, CdnBucketVisibility Visibility);
@@ -23,7 +23,8 @@ namespace NinjaVault.Cdn
 
     /// <summary>
     /// Bucket must exist and be allowed for the configured API key; TenantId must be inside the key's
-    /// allowed tenant scope (or the key must be unrestricted).
+    /// allowed tenant scope (or the key must be unrestricted). TenantId is a string - a GUID such as
+    /// <c>"0f8fad5b-d9cb-469f-a165-70867728950e"</c> (older numeric ids like <c>"42"</c> are still plain strings).
     /// </summary>
     /// <remarks>
     /// <para>
@@ -39,7 +40,7 @@ namespace NinjaVault.Cdn
     /// </remarks>
     public sealed record CdnUploadRequest(
         string Bucket,
-        long TenantId,
+        string TenantId,
         Stream File,
         string FileName,
         string? ContentType = null,
@@ -72,7 +73,7 @@ namespace NinjaVault.Cdn
     /// </summary>
     public sealed record CdnFileObject(
         Guid Id,
-        long TenantId,
+        [property: JsonConverter(typeof(TenantIdJsonConverter))] string TenantId,
         long? OwnerId,
         string Bucket,
         string ObjectKey,

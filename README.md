@@ -13,7 +13,7 @@ Both target `net8.0`, `net9.0` and `net10.0`.
 
 ## NinjaVault SDKs
 
-The same CDN client in every language, with the same features and the **same version number** (for example `100.42.1` everywhere):
+The same CDN client in every language, with the same features and the **same version number** (for example `100.43.0` everywhere):
 
 | Language | Package | Install | Source |
 |---|---|---|---|
@@ -49,7 +49,7 @@ builder.Services.AddNinjaVaultCdn(builder.Configuration);
 
 public sealed class DocumentService(INinjaVaultCdnClient cdn)
 {
-    public Task<CdnUploadResult> UploadAsync(Stream pdf, long tenantId, CancellationToken ct)
+    public Task<CdnUploadResult> UploadAsync(Stream pdf, string tenantId, CancellationToken ct)
         => cdn.UploadAsync(new CdnUploadRequest("documents", tenantId, pdf, "invoice.pdf", "application/pdf"), ct);
 }
 ```

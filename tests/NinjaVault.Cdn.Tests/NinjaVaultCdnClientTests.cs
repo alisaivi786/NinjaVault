@@ -60,7 +60,7 @@ public sealed class NinjaVaultCdnClientTests
         using MemoryStream stream = new(Encoding.UTF8.GetBytes("payload"));
 
         CdnUploadResult uploaded = await client.UploadAsync(
-            new CdnUploadRequest("documents", 42, stream, "invoice.pdf", "application/pdf", 1001, "invoices/2026"),
+            new CdnUploadRequest("documents", " 0f8fad5b-d9cb-469f-a165-70867728950e ", stream, "invoice.pdf", "application/pdf", 1001, "invoices/2026"),
             TestContext.Current.CancellationToken);
 
         Assert.Equal("owner-token/invoices/2026/file.pdf", uploaded.ObjectKey);
@@ -69,7 +69,8 @@ public sealed class NinjaVaultCdnClientTests
         Assert.Contains("name=Bucket", captured.Body, StringComparison.Ordinal);
         Assert.Contains("documents", captured.Body, StringComparison.Ordinal);
         Assert.Contains("name=TenantId", captured.Body, StringComparison.Ordinal);
-        Assert.Contains("42", captured.Body, StringComparison.Ordinal);
+        Assert.Contains("0f8fad5b-d9cb-469f-a165-70867728950e", captured.Body, StringComparison.Ordinal);
+        Assert.DoesNotContain(" 0f8fad5b", captured.Body, StringComparison.Ordinal);
         Assert.Contains("name=OwnerId", captured.Body, StringComparison.Ordinal);
         Assert.Contains("1001", captured.Body, StringComparison.Ordinal);
         Assert.Contains("name=FolderPath", captured.Body, StringComparison.Ordinal);
@@ -96,7 +97,7 @@ public sealed class NinjaVaultCdnClientTests
             new CdnFileListQuery
             {
                 Bucket = "documents",
-                TenantId = 42,
+                TenantId = "0f8fad5b-d9cb-469f-a165-70867728950e",
                 ObjectKeyPrefix = "owner-token/invoices",
                 Category = CdnFileCategory.Document,
                 Visibility = CdnBucketVisibility.Private,
@@ -109,7 +110,7 @@ public sealed class NinjaVaultCdnClientTests
 
         string url = Assert.Single(handler.Requests).Uri!.ToString();
         Assert.Contains("bucket=documents", url, StringComparison.Ordinal);
-        Assert.Contains("tenantId=42", url, StringComparison.Ordinal);
+        Assert.Contains("tenantId=0f8fad5b-d9cb-469f-a165-70867728950e", url, StringComparison.Ordinal);
         Assert.Contains("objectKeyPrefix=owner-token%2Finvoices", url, StringComparison.Ordinal);
         Assert.Contains("category=Document", url, StringComparison.Ordinal);
         Assert.Contains("visibility=Private", url, StringComparison.Ordinal);
@@ -127,7 +128,7 @@ public sealed class NinjaVaultCdnClientTests
           "success": true,
           "data": {
             "id": "1cf8e5e6-21f0-49a5-90b1-5c0f985c9df7",
-            "tenantId": 42,
+            "tenantId": "0f8fad5b-d9cb-469f-a165-70867728950e",
             "ownerId": null,
             "bucket": "documents",
             "objectKey": "owner token/a file.pdf",
@@ -148,7 +149,9 @@ public sealed class NinjaVaultCdnClientTests
 
         INinjaVaultCdnClient client = CreateClient(handler);
 
-        _ = await client.GetMetadataAsync("my docs", "owner token/a file.pdf", TestContext.Current.CancellationToken);
+        CdnFileObject file = await client.GetMetadataAsync("my docs", "owner token/a file.pdf", TestContext.Current.CancellationToken);
+
+        Assert.Equal("0f8fad5b-d9cb-469f-a165-70867728950e", file.TenantId);
 
         Assert.Equal("https://cdn.test/api/v1/file-metadata/my%20docs/owner%20token/a%20file.pdf", Assert.Single(handler.Requests).Uri?.AbsoluteUri);
     }
@@ -270,6 +273,43 @@ public sealed class NinjaVaultCdnClientTests
         CdnFileObject file = await client.GetMetadataAsync("documents", "owner-token/invoices/2026/file.pdf", TestContext.Current.CancellationToken);
 
         Assert.Equal(1001, file.OwnerId);
+        Assert.Equal("42", file.TenantId);
+    }
+
+    [Fact]
+    public async Task GetAccessContextAsync_ReadsTenantIdsAsStrings()
+    {
+        StubHttpMessageHandler handler = new((_, _) => Task.FromResult(StubResponses.Ok("""
+        {
+          "success": true,
+          "data": {
+            "name": "orders-service",
+            "isUnrestricted": false,
+            "isAdmin": false,
+            "allowedBuckets": ["documents"],
+            "allowedTenantIds": ["0f8fad5b-d9cb-469f-a165-70867728950e", 42],
+            "buckets": [{ "name": "documents", "visibility": "Private" }]
+          }
+        }
+        """)));
+
+        INinjaVaultCdnClient client = CreateClient(handler);
+
+        CdnAccessContext access = await client.GetAccessContextAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(["0f8fad5b-d9cb-469f-a165-70867728950e", "42"], access.AllowedTenantIds);
+        Assert.Equal("https://cdn.test/api/v1/me", Assert.Single(handler.Requests).Uri?.ToString());
+    }
+
+    [Fact]
+    public async Task UploadAsync_RejectsBlankTenantId()
+    {
+        INinjaVaultCdnClient client = CreateClient(new StubHttpMessageHandler((_, _) => throw new InvalidOperationException("No request expected.")));
+        using MemoryStream stream = new([1]);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.UploadAsync(
+            new CdnUploadRequest("documents", " ", stream, "a.txt"),
+            TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -460,7 +500,7 @@ public sealed class NinjaVaultCdnClientTests
         using MemoryStream stream = new([1]);
 
         CdnUploadResult result = await CreateClient(handler).UploadAsync(
-            new CdnUploadRequest("documents", 1, stream, "a.pdf"), TestContext.Current.CancellationToken);
+            new CdnUploadRequest("documents", "0f8fad5b-d9cb-469f-a165-70867728950e", stream, "a.pdf"), TestContext.Current.CancellationToken);
 
         Assert.Equal("https://cdn.test/view/documents/a.pdf", result.ViewUrl);
     }

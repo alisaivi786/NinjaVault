@@ -236,7 +236,7 @@ using HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "char
 
 ## NinjaVault SDKs
 
-The same CDN client in every language, with the same features and the **same version number** (for example `100.42.1` everywhere):
+The same CDN client in every language, with the same features and the **same version number** (for example `100.43.0` everywhere):
 
 | Language | Package | Install | Source |
 |---|---|---|---|
